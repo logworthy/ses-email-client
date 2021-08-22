@@ -1,0 +1,112 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Uploading files to S3
+Parameters:
+  IndexHtmlSrcUrl:
+    Default: >-
+      https://raw.githubusercontent.com/logworthy/ses-email-client/master/my-email/index.html
+    Type: String
+    Description: Link to HTML to pull
+  StaticS3Bucket:
+    Default: MyStaticS3Bucket
+    Type: String
+    Description: Bucket used to host static files (bucket should already exist!)
+  StaticS3Key:
+    Default: MyStaticKey
+    Type: String
+    Description: Key to store file
+
+Resources:
+  S3CustomResource:
+    Type: Custom::S3CustomResource
+    Properties:
+      ServiceToken: !GetAtt AWSLambdaFunction.Arn
+      source_url: !Ref IndexHtmlSrcUrl
+      dest_bucket: !Ref StaticS3Bucket
+      dest_key: !Ref StaticS3Key
+  AWSLambdaFunction:
+     Type: "AWS::Lambda::Function"
+     Properties:
+       Description: "Copy file to S3 bucket"
+       FunctionName: !Sub '${AWS::StackName}-${AWS::Region}-lambda'
+       Handler: index.handler
+       Role: !GetAtt AWSLambdaExecutionRole.Arn
+       Timeout: 360
+       Runtime: python3.6
+       Code:
+         ZipFile: |
+          import boto3
+          import cfnresponse
+          from urllib.request import urlopen
+          def handler(event, context):
+              # Init ...
+              the_event = event['RequestType']
+              print("The event is: ", str(the_event))
+              response_data = {}
+              s_3 = boto3.client('s3')
+              # Retrieve parameters
+              source_url = event['ResourceProperties']['source_url']
+              dest_bucket = event['ResourceProperties']['dest_bucket']
+              dest_key = event['ResourceProperties']['dest_key']
+              try:
+                  if the_event in ('Create', 'Update'):
+                      print("Requested file: %s to s3://%s/%s" % (str(source_url), str(dest_bucket), str(dest_key)))
+                      response = urlopen(source_url)
+                      s3_response = s_3.upload_fileobj(response, dest_bucket, dest_key)
+                  elif the_event == 'Delete':
+                      print("Deleting S3 content...")
+                      s3_response = s_3.delete_object(
+                          Bucket=dest_bucket,
+                          Key=dest_key
+                      )
+
+                  # Everything OK... send the signal back
+                  print("Operation successful!")
+                  cfnresponse.send(event,
+                                   context,
+                                   cfnresponse.SUCCESS,
+                                   response_data)
+              except Exception as e:
+                  print("Operation failed...")
+                  print(str(e))
+                  response_data['Data'] = str(e)
+                  cfnresponse.send(event,
+                                   context,
+                                   cfnresponse.FAILED,
+                                   response_data)
+  AWSLambdaExecutionRole:
+     Type: AWS::IAM::Role
+     Properties:
+       AssumeRolePolicyDocument:
+         Statement:
+         - Action:
+           - sts:AssumeRole
+           Effect: Allow
+           Principal:
+             Service:
+             - lambda.amazonaws.com
+         Version: '2012-10-17'
+       Path: "/"
+       Policies:
+       - PolicyDocument:
+           Statement:
+           - Action:
+             - logs:CreateLogGroup
+             - logs:CreateLogStream
+             - logs:PutLogEvents
+             Effect: Allow
+             Resource: arn:aws:logs:*:*:*
+           Version: '2012-10-17'
+         PolicyName: !Sub ${AWS::StackName}-${AWS::Region}-AWSLambda-CW
+       - PolicyDocument:
+           Statement:
+           - Action:
+             - s3:PutObject
+             - s3:DeleteObject
+             - s3:List*
+             Effect: Allow
+             Resource:
+             - !Sub arn:aws:s3:::${StaticS3Bucket}/*
+             - !Sub arn:aws:s3:::${StaticS3Bucket}
+           Version: '2012-10-17'
+         PolicyName: !Sub ${AWS::StackName}-${AWS::Region}-AWSLambda-S3
+       RoleName: !Sub ${AWS::StackName}-${AWS::Region}-AWSLambdaExecutionRole
