@@ -7,15 +7,22 @@ Parameters:
     Type: String
     Description: Link to HTML to pull
   StaticS3Bucket:
-    Default: MyStaticS3Bucket
+    Default: mail.freezochino.com.au
     Type: String
-    Description: Bucket used to host static files (bucket should already exist!)
+    Description: Bucket used to host static files (bucket will be created)
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9._-]*'
   StaticS3Key:
-    Default: MyStaticKey
+    Default: static
     Type: String
     Description: Key to store file
 
 Resources:
+
+  S3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Ref StaticS3Bucket
+
   S3CustomResource:
     Type: Custom::S3CustomResource
     Properties:
