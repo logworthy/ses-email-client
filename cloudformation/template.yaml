@@ -30,6 +30,8 @@ Resources:
       source_url: !Ref IndexHtmlSrcUrl
       dest_bucket: !Ref StaticS3Bucket
       dest_key: !Ref StaticS3Key
+    DependsOn: S3Bucket
+    
   AWSLambdaFunction:
      Type: "AWS::Lambda::Function"
      Properties:
