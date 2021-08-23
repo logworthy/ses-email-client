@@ -121,7 +121,7 @@ Resources:
       dest_bucket:
         Fn::GetAtt:
           - CustomResourceStack
-          - Outputs.S3BucketRootName
+          - Outputs.S3BucketRoot
       dest_key: !Ref StaticS3Key
 
   AWSLambdaFunction:
