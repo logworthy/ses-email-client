@@ -21,7 +21,7 @@ Parameters:
     Description: Link to HTML to pull
 
   StaticS3Key:
-    Default: static
+    Default: index.html
     Type: String
     Description: Key to store file
 
@@ -29,12 +29,13 @@ Parameters:
     Description: The part of a website address before your DomainName - e.g. www or
       img
     Type: String
-    Default: www
+    Default: mail
     AllowedPattern: ^[^.]*$
 
   DomainName:
     Description: The part of a website address after your SubDomain - e.g. example.com
     Type: String
+    Default: freezochino.com.au
 
   CreateApex:
     Description: Create an Apex Alias in CloudFront distribution - yes/no
